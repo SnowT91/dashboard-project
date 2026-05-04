@@ -45,6 +45,76 @@ function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
 }
 
+// Генерация уникального ID
+function generateId() {
+    // Используем встроенный криптографический API браузера
+    return window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+}
+
+// --- ЛОГИКА СОТРУДНИКОВ (EMPLOYEES) ---
+function addEmployee(name, surname, dateOfBirth, position, salary) {
+    const periodKey = getCurrentPeriodKey();
+    
+    const newEmployee = {
+        id: generateId(),
+        name: name,
+        surname: surname,
+        dateOfBirth: dateOfBirth,
+        position: position,
+        salary: Number(salary), // Убедимся, что зарплата сохраняется как число
+        assignments: [],         // Список проектов, к которым прикреплен сотрудник
+        vacations: []           // Дни отпуска сотрудника в текущем месяце
+   };
+    
+   // Добавляем нового сотрудника в массив текущего месяца
+    state.data[periodKey].employees.push(newEmployee);
+    
+    // Сохраняем изменения
+    saveData();
+    console.log(`Employee ${name} ${surname} added successfully.`);
+
+    return newEmployee;
+}
+
+function deleteEmployee(employeeId) {
+    const periodKey = getCurrentPeriodKey();
+
+    // Оставляем в массиве только тех сотрудников, чей ID НЕ совпадает с удаляемым
+    state.data[periodKey].employees = state.data[periodKey].employees.filter(emp => emp.id !== employeeId);
+
+    saveData();
+    console.log(`Employee with ID ${employeeId} deleted successfully.`);
+}
+
+// --- ЛОГИКА ПРОЕКТОВ (PROJECTS) ---
+
+function addProject(projectName, companyName, budget, employeeCapacity) {
+    const periodKey = getCurrentPeriodKey();
+
+    const newProject = {
+       id: generateId(),
+       projectName: projectName,
+       companyName: companyName,
+       budget: Number(budget),
+       employeeCapacity: Number(employeeCapacity) 
+    };
+
+    state.data[periodKey].projects.push(newProject);
+    saveData();
+    console.log(`Project "${projectName}" added successfully!`);
+
+    return newProject;
+}
+
+function deleteProject(projectId) {
+    const periodKey = getCurrentPeriodKey();
+
+    state.data[periodKey].projects = state.data[periodKey].projects.filter(proj => proj.id !== projectId);
+
+    saveData();
+    console.log(`Project with ID ${projectId} deleted successfully.`);
+}
+
 // Функция, которая запускается при старте приложения
 function initApp() {
     loadData();
