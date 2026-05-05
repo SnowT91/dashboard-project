@@ -7,8 +7,58 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <h1>Employee & Project Dashboard</h1>
+    <div id="app-container">
+        <!-- Боковая панель (Сайдбар) -->
+        <aside id="sidebar">
+            <h2>Dashboard</h2>
+            <nav>
+                <button id="btn-tab-projects" class="active">Projects</button>
+                <button id="btn-tab-employees">Employees</button>
+            </nav>
+        </aside>
+
+        <!-- Основной контент -->
+        <main id="main-content">
+
+            <!-- Проекты -->
+            <section id="projects-view">
+                <h2>Projects</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Project</th>
+                            <th>Budget</th>
+                            <th>Capacity</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projects-tbody">
+                        <!-- Сюда JS будет вставлять строки с проектами -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Сотрудники -->
+            <section id="employees-view" style="display: none;">
+                <h2>Employees</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Surname</th>
+                            <th>Position</th>
+                            <th>Salary</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employees-tbody">
+                        <!-- Сюда JS будет вставлять строки с сотрудниками -->
+                    </tbody>
+                </table>
+            </section>
+
+        </main>     
     </div>
 
     <script src="script.js"></script>

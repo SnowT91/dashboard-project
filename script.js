@@ -121,9 +121,105 @@ function initApp() {
     console.log("App initialized. Current data:", state.data);
     console.log("Current period:", getCurrentPeriodKey());
 
-    // Временно убираем текст "Загрузка..." из HTML, чтобы увидеть, что JS сработал
-    document.getElementById('app').innerHTML = '<h2>Данные загружены. Загляните в консоль!</h2>';
+    // Первичная отрисовка 
+    renderProjects();
 }
 
     // Запускаем приложение
     initApp();
+
+    // --- UI ЛОГИКА (ИНТЕРФЕС И РЕНДЕР)
+
+    // Находим элементы DOM
+    const btnTabProjects = document.getElementById('btn-tab-projects');
+    const btnTabEmployees = document.getElementById('btn-tab-employees');
+    const projectsView = document.getElementById('projects-view');
+    const employeesView = document.getElementById('employees-view');
+
+    // Слушатели событий для переключения вкладок
+    btnTabProjects.addEventListener('click', () => {
+        projectsView.style.display = 'block';
+        employeesView.style.display = 'none';
+
+        // Опционально: переключаем классы активности для стилей
+        btnTabProjects.classList.add('active');
+        btnTabEmployees.classList.remove('active');
+
+        renderProjects(); // Обновляем таблицу при переходе
+    });
+
+    btnTabEmployees.addEventListener('click', () => {
+        projectsView.style.display = 'none';
+        employeesView.style.display = 'block';
+
+        btnTabEmployees.classList.add('active');
+        btnTabProjects.classList.remove('active');
+
+        renderEmployees(); // Обновляем таблицу при переходе
+    });
+
+    // Отрисовка таблицы сотрудников
+    function renderEmployees() {
+        const tbody = document.getElementById('employees-tbody');
+        const periodKey = getCurrentPeriodKey();
+        const employees = state.data[periodKey].employees;
+
+        tbody.innerHTML = ''; // Очищаем таблицу перед каждой новой отрисовкой
+
+        employees.forEach(emp => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${emp.name}</td>
+                <td>${emp.surname}</td>
+                <td>${emp.position}</td>
+                <td>$${emp.salary}</td>
+                <td>
+                    <!-- Кнопка удаления. Мы вешаем на нее data-атрибут с ID -->
+                    <button class="delete-emp-btn" data-id="${emp.id}">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Отрисовка таблицы проектов
+    function renderProjects() {
+        const tbody = document.getElementById('projects-tbody');
+        const periodKey = getCurrentPeriodKey();
+        const projects = state.data[periodKey].projects;
+
+        tbody.innerHTML = '';
+
+        projects.forEach(proj => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${proj.companyName}</td>
+                <td>${proj.projectName}</td>
+                <td>$${proj.budget}</td>
+                <td>0/${proj.employeeCapacity}</td>
+                <td>
+                    <button class="delete-proj-btn" data-id="${proj.id}">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Делегирование событий для удаления сотрудника
+    document.getElementById('employees-tbody').addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-emp-btn')) {
+            // Достаем ID из data-id атрибута
+            const employeeId = e.target.getAttribute('data-id');
+            deleteEmployee(employeeId); // Удаляем из state
+            renderEmployees();           // Перерисовываем UI
+        }
+    });
+
+    // Делегирование событий для удаления проекта
+    document.getElementById('projects-tbody').addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-proj-btn')) {
+            const projectId = e.target.getAttribute('data-id');
+            deleteProject(projectId);
+            renderProjects();
+        }
+    });
