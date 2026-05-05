@@ -125,101 +125,196 @@ function initApp() {
     renderProjects();
 }
 
-    // Запускаем приложение
-    initApp();
+// --- UI ЛОГИКА (ИНТЕРФЕС И РЕНДЕР)
 
-    // --- UI ЛОГИКА (ИНТЕРФЕС И РЕНДЕР)
+// Находим элементы DOM
+const btnTabProjects = document.getElementById('btn-tab-projects');
+const btnTabEmployees = document.getElementById('btn-tab-employees');
+const projectsView = document.getElementById('projects-view');
+const employeesView = document.getElementById('employees-view');
 
-    // Находим элементы DOM
-    const btnTabProjects = document.getElementById('btn-tab-projects');
-    const btnTabEmployees = document.getElementById('btn-tab-employees');
-    const projectsView = document.getElementById('projects-view');
-    const employeesView = document.getElementById('employees-view');
+// Слушатели событий для переключения вкладок
+btnTabProjects.addEventListener('click', () => {
+    projectsView.style.display = 'block';
+    employeesView.style.display = 'none';
 
-    // Слушатели событий для переключения вкладок
-    btnTabProjects.addEventListener('click', () => {
-        projectsView.style.display = 'block';
-        employeesView.style.display = 'none';
+    // Опционально: переключаем классы активности для стилей
+    btnTabProjects.classList.add('active');
+    btnTabEmployees.classList.remove('active');
 
-        // Опционально: переключаем классы активности для стилей
-        btnTabProjects.classList.add('active');
-        btnTabEmployees.classList.remove('active');
+    renderProjects(); // Обновляем таблицу при переходе
+});
 
-        renderProjects(); // Обновляем таблицу при переходе
+btnTabEmployees.addEventListener('click', () => {
+    projectsView.style.display = 'none';
+    employeesView.style.display = 'block';
+
+    btnTabEmployees.classList.add('active');
+    btnTabProjects.classList.remove('active');
+
+    renderEmployees(); // Обновляем таблицу при переходе
+});
+
+// Отрисовка таблицы сотрудников
+function renderEmployees() {
+    const tbody = document.getElementById('employees-tbody');
+    const periodKey = getCurrentPeriodKey();
+    const employees = state.data[periodKey].employees;
+
+    tbody.innerHTML = ''; // Очищаем таблицу перед каждой новой отрисовкой
+
+    employees.forEach(emp => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${emp.name}</td>
+            <td>${emp.surname}</td>
+            <td>${emp.position}</td>
+            <td>$${emp.salary.toFixed(2)}</td>
+            <td>
+                <!-- Кнопка удаления. Мы вешаем на нее data-атрибут с ID -->
+                <button class="delete-emp-btn" data-id="${emp.id}">Delete</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
     });
+}
 
-    btnTabEmployees.addEventListener('click', () => {
-        projectsView.style.display = 'none';
-        employeesView.style.display = 'block';
+// Отрисовка таблицы проектов
+function renderProjects() {
+    const tbody = document.getElementById('projects-tbody');
+    const periodKey = getCurrentPeriodKey();
+    const projects = state.data[periodKey].projects;
 
-        btnTabEmployees.classList.add('active');
-        btnTabProjects.classList.remove('active');
+    tbody.innerHTML = '';
 
-        renderEmployees(); // Обновляем таблицу при переходе
+    projects.forEach(proj => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${proj.companyName}</td>
+            <td>${proj.projectName}</td>
+            <td>$${proj.budget.toFixed(2)}</td>
+            <td>0/${proj.employeeCapacity}</td>
+            <td>
+                <button class="delete-proj-btn" data-id="${proj.id}">Delete</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
     });
+}
 
-    // Отрисовка таблицы сотрудников
-    function renderEmployees() {
-        const tbody = document.getElementById('employees-tbody');
-        const periodKey = getCurrentPeriodKey();
-        const employees = state.data[periodKey].employees;
+// Делегирование событий для удаления сотрудника
+document.getElementById('employees-tbody').addEventListener('click', (e) => {
+    if (e.target.classList.contains('delete-emp-btn')) {
+        // Достаем ID из data-id атрибута
+        const employeeId = e.target.getAttribute('data-id');
+        deleteEmployee(employeeId); // Удаляем из state
+        renderEmployees();           // Перерисовываем UI
+    }
+});
 
-        tbody.innerHTML = ''; // Очищаем таблицу перед каждой новой отрисовкой
+// Делегирование событий для удаления проекта
+document.getElementById('projects-tbody').addEventListener('click', (e) => {
+    if (e.target.classList.contains('delete-proj-btn')) {
+        const projectId = e.target.getAttribute('data-id');
+        deleteProject(projectId);
+        renderProjects();
+    }
+});
 
-        employees.forEach(emp => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${emp.name}</td>
-                <td>${emp.surname}</td>
-                <td>${emp.position}</td>
-                <td>$${emp.salary}</td>
-                <td>
-                    <!-- Кнопка удаления. Мы вешаем на нее data-атрибут с ID -->
-                    <button class="delete-emp-btn" data-id="${emp.id}">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+// --- ЛОГИКА ФОРМ И ВАЛИДАЦИИ ---
+
+// Элементы формы проектов
+const projectForm = document.getElementById('project-form');
+const btnShowProjectForm = document.getElementById('btn-show-project-form');
+const btnCancelProject = document.getElementById('btn-cancel-project');
+const btnSubmitProject = document.getElementById('btn-submit-project');
+
+// Элементы формы сотрудников
+const employeeForm = document.getElementById('employee-form');
+const btnShowEmployeeForm = document.getElementById('btn-show-employee-form');
+const btnCancelEmployee = document.getElementById('btn-cancel-employee');
+const btnSubmitEmployee = document.getElementById('btn-submit-employee');
+
+// Функции показать/скрыть формы
+btnShowProjectForm.addEventListener('click', () => {
+    projectForm.style.display = 'block';
+    btnShowProjectForm.style.display = 'none';
+});
+btnCancelProject.addEventListener('click', () => {
+    projectForm.style.display = 'none';
+    btnShowProjectForm.style.display = 'inline-block';
+    projectForm.reset();
+    btnSubmitProject.disabled = true; // Сбрасываем кнопку
+});
+
+btnShowEmployeeForm.addEventListener('click', () => {
+    employeeForm.style.display = 'block';
+    btnShowEmployeeForm.style.display = 'none';
+});
+btnCancelEmployee.addEventListener('click', () => {
+    employeeForm.style.display = 'none';
+    btnShowEmployeeForm.style.display = 'inline-block';
+    employeeForm.reset();
+    btnSubmitEmployee.disabled = true;
+});
+
+// Real-time валидация: проверяем форму при каждом входе
+projectForm.addEventListener('input', () => {
+    // checkValidity() - встроенный метод JS, который проверяет все правила (required, minlength и т.д.)
+    btnSubmitProject.disabled = !projectForm.checkValidity();
+});
+projectForm.addEventListener('blur', () => btnSubmitProject.disabled = !projectForm.checkValidity(), true);
+
+employeeForm.addEventListener('input', () => {
+    // Для сотрудника нужно дополнительно проверить возраст (18+)
+    let isAgeValid = false;
+    const dobInput = document.getElementById('emp-dob').value;
+
+    if (dobInput) {
+        const birthDate = new Date(dobInput);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        isAgeValid = age >= 18;
     }
 
-    // Отрисовка таблицы проектов
-    function renderProjects() {
-        const tbody = document.getElementById('projects-tbody');
-        const periodKey = getCurrentPeriodKey();
-        const projects = state.data[periodKey].projects;
+    // Кнопка активна, если стандартные проверки HTML пройдены И возраст >= 18
+    btnSubmitEmployee.disabled = !(employeeForm.checkValidity() && isAgeValid);
+});
 
-        tbody.innerHTML = '';
+// Отправка формы проектов
+projectForm.addEventListener('submit', (e) => {
+    e.preventDefault(); // Отменяем перезагрузку страницы
 
-        projects.forEach(proj => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${proj.companyName}</td>
-                <td>${proj.projectName}</td>
-                <td>$${proj.budget}</td>
-                <td>0/${proj.employeeCapacity}</td>
-                <td>
-                    <button class="delete-proj-btn" data-id="${proj.id}">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+    const name = document.getElementById('proj-name').value;
+    const company = document.getElementById('proj-company').value;
+    const budget = document.getElementById('proj-budget').value;
+    const capacity = document.getElementById('proj-capacity').value;
 
-    // Делегирование событий для удаления сотрудника
-    document.getElementById('employees-tbody').addEventListener('click', (e) => {
-        if (e.target.classList.contains('delete-emp-btn')) {
-            // Достаем ID из data-id атрибута
-            const employeeId = e.target.getAttribute('data-id');
-            deleteEmployee(employeeId); // Удаляем из state
-            renderEmployees();           // Перерисовываем UI
-        }
-    });
+    addProject(name, company, budget, capacity);
+    renderProjects();
 
-    // Делегирование событий для удаления проекта
-    document.getElementById('projects-tbody').addEventListener('click', (e) => {
-        if (e.target.classList.contains('delete-proj-btn')) {
-            const projectId = e.target.getAttribute('data-id');
-            deleteProject(projectId);
-            renderProjects();
-        }
-    });
+    btnCancelProject.click(); // Имитируем клик по Cancel, чтобы скрыть форму и очистить её  
+});
+
+// Отправка формы сотрудников
+employeeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('emp-name').value;
+    const surname = document.getElementById('emp-surname').value;
+    const dob = document.getElementById('emp-dob').value;
+    const position = document.getElementById('emp-position').value;
+    const salary = document.getElementById('emp-salary').value;
+
+    addEmployee(name, surname, dob, position, salary);
+    renderEmployees();
+
+    btnCancelEmployee.click();
+});
+
+// Запускаем приложение
+initApp();

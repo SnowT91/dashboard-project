@@ -23,6 +23,20 @@
             <!-- Проекты -->
             <section id="projects-view">
                 <h2>Projects</h2>
+                <button id="btn-show-project-form">Add New Project</button>
+
+                <form id="project-form" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid #ccc;">
+                    <h3>Create Project</h3>
+                    <!-- pattern="[a-zA-Z0-9\s]+" означает только буквы и цифры (alphanumeric по ТЗ) -->
+                    <input type="text" id="proj-company" placeholder="Company Name" required minlength="2" pattern="[a-zA-Z0-9А-Яа-яЁё\s]+">
+                    <input type="text" id="proj-name" placeholder="Project Name" required minlength="3" pattern="[a-zA-Z0-9А-Яа-яЁё\s]+">
+                    <input type="number" id="proj-budget" placeholder="Budget ($)" required min="0.01" step="0.01">
+                    <input type="number" id="proj-capacity" placeholder="Employee Capacity" required min="1" step="1">
+
+                    <button type="submit" id="btn-submit-project" disabled>Save Project</button>
+                    <button type="button" id="btn-cancel-project">Cancel</button>
+                </form>
+
                 <table>
                     <thead>
                         <tr>
@@ -42,6 +56,31 @@
             <!-- Сотрудники -->
             <section id="employees-view" style="display: none;">
                 <h2>Employees</h2>
+                <button id="btn-show-employee-form">Add New Employee</button>
+
+                <form id="employee-form" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid #ccc;">
+                    <h3>Create Employee</h3>
+                    <!-- pattern="[A-Za-zА-Яа-яЁё\s]+" означает только буквы (letters only по ТЗ) -->
+                    <input type="text" id="emp-name" placeholder="Name" required minlength="3" pattern="[A-Za-zА-Яа-яЁё\s]+">
+                    <input type="text" id="emp-surname" placeholder="Surname" required minlength="3" pattern="[A-Za-zА-Яа-яЁё\s]+">
+                    <input type="date" id="emp-dob" required>
+
+                    <select id="emp-position" required>
+                        <option value="" disabled selected>Select Position...</option>
+                        <option value="Junior">Junior</option>
+                        <option value="Middle">Middle</option>
+                        <option value="Senior">Senior</option>
+                        <option value="Lead">Lead</option>
+                        <option value="Architect">Architect</option>
+                        <option value="BO">BO</option>
+                    </select>
+
+                    <input type="number" id="emp-salary" placeholder="Salary ($)" required min="0.01" step="0.01">
+
+                    <button type="submit" id="btn-submit-employee" disabled>Save Employee</button>
+                    <button type="button" id="btn-cancel-employee">Cancel</button>
+                </form>
+
                 <table>
                     <thead>
                         <tr>
