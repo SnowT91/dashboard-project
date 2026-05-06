@@ -85,3 +85,28 @@ input, select {
 input:invalid:not(:placeholder-shown) {
     border-color: red;
 }
+
+.assignment-tag {
+    display: inline-block;
+    background: #e0e0e0;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin: 2px;
+}
+
+.unassign-btn {
+    background: none;
+    border: none;
+    color: red;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 2px;
+    margin-left: 5px;
+}
+
+.assign-select {
+    margin-top: 5px;
+    font-size: 12px;
+    padding: 4px;
+}

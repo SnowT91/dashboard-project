@@ -86,6 +86,42 @@ function deleteEmployee(employeeId) {
     console.log(`Employee with ID ${employeeId} deleted successfully.`);
 }
 
+// Назначить проект сотруднику
+function assignProjectToEmployee(employeeId, projectId) {
+    const periodKey = getCurrentPeriodKey();
+    const data = state.data[periodKey];
+
+    const employee = data.employees.find(emp => emp.id === employeeId);
+    const project = data.projects.find(proj => proj.id === projectId);
+
+    if (!employee || !project) return;
+
+    // Считаем, сколько сотрудников уже назначено на этот проект
+    const assignedCount = data.employees.filter(emp => emp.assignments.includes(projectId)).length;
+
+    if (assignedCount >= project.employeeCapacity) {
+        alert(`Cannot assign! Project "${project.projectName}" has reached its maximum capacity of${project.employeeCapacity}.`);
+        return;
+    }
+
+    // Добавляем ID проекта сотруднику, если его там ещё нет
+    if (!employee.assignments.includes(projectId)) {
+        employee.assignments.push(projectId);
+        saveData();
+    }
+}
+
+// Отвязать проект от сотрудника
+function unassignProjectFromEmployee(employeeId, projectId) {
+    const periodKey = getCurrentPeriodKey();
+    const employee = state.data[periodKey].employees.find(emp => emp.id === employeeId);
+
+    if (employee) {
+        employee.assignments = employee.assignments.filter(id => id !== projectId);
+        saveData();
+    }
+}
+
 // --- ЛОГИКА ПРОЕКТОВ (PROJECTS) ---
 
 function addProject(projectName, companyName, budget, employeeCapacity) {
@@ -108,8 +144,15 @@ function addProject(projectName, companyName, budget, employeeCapacity) {
 
 function deleteProject(projectId) {
     const periodKey = getCurrentPeriodKey();
+    const data = state.data[periodKey];
 
-    state.data[periodKey].projects = state.data[periodKey].projects.filter(proj => proj.id !== projectId);
+    // Удаляем сам проект
+    data.projects = data.projects.filter(proj => proj.id !== projectId);
+
+    // Удаляем ID этого проекта из назначений всех сотрудников
+    data.employees.forEach (emp => {
+        emp.assignments = emp.assignments.filter(id => id !== projectId);
+    });
 
     saveData();
     console.log(`Project with ID ${projectId} deleted successfully.`);
@@ -171,17 +214,37 @@ function updateDashboardStats() {
 function renderEmployees() {
     const tbody = document.getElementById('employees-tbody');
     const periodKey = getCurrentPeriodKey();
-    const employees = state.data[periodKey].employees;
+    const data = state.data[periodKey];
 
     tbody.innerHTML = ''; // Очищаем таблицу перед каждой новой отрисовкой
 
-    employees.forEach(emp => {
+    // Генерируем опции для выпадающего списка проектов
+    const projectOptions =data.projects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
+
+    data.employees.forEach(emp => {
+        // Собираем HTML для уже назначенных проектов (в виде маленьких "тегов" с кнопкой удаления)
+        const assignmentsHtml = emp.assignments.map(projectId => {
+            const project = data.projects.find(p => p.id === projectId);
+            if (!project) return ''; // Если проект был удален, пропускаем
+            return `<div class="assignment-tag">
+                        ${project.projectName} 
+                        <button class="unassign-btn" data-emp-id="${emp.id}" data-proj-id="${project.id}">x</button>
+                    </div>`;
+        }).join('');
+        
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${emp.name}</td>
             <td>${emp.surname}</td>
             <td>${emp.position}</td>
             <td>$${emp.salary.toFixed(2)}</td>
+            <td>
+                <div class="assignments-list">${assignmentsHtml}</div>
+                <select class="assign-select" data-emp-id="${emp.id}">
+                    <option value="" disabled selected>+ Assign to...</option>
+                    ${projectOptions}
+                </select>
+            </td>
             <td>
                 <!-- Кнопка удаления. Мы вешаем на нее data-атрибут с ID -->
                 <button class="delete-emp-btn" data-id="${emp.id}">Delete</button>
@@ -197,17 +260,20 @@ function renderEmployees() {
 function renderProjects() {
     const tbody = document.getElementById('projects-tbody');
     const periodKey = getCurrentPeriodKey();
-    const projects = state.data[periodKey].projects;
+    const data = state.data[periodKey];
 
     tbody.innerHTML = '';
 
-    projects.forEach(proj => {
+    data.projects.forEach(proj => {
+        //Считаем количество сотрудников, у которых в массиве assignments есть ID этого проекта
+        const assignedCount = data.employees.filter(emp => emp.assignments.includes(proj.id)).length;
+        
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${proj.companyName}</td>
             <td>${proj.projectName}</td>
             <td>$${proj.budget.toFixed(2)}</td>
-            <td>0/${proj.employeeCapacity}</td>
+            <td>${assignedCount} / ${proj.employeeCapacity}</td> <!-- Выводим реальные данные -->
             <td>
                 <button class="delete-proj-btn" data-id="${proj.id}">Delete</button>
             </td>
@@ -333,6 +399,33 @@ employeeForm.addEventListener('submit', (e) => {
     renderEmployees();
 
     btnCancelEmployee.click();
+});
+
+// Назначение на проект через выпадающий список
+document.getElementById('employees-tbody').addEventListener('change', (e) => {
+    if (e.target.classList.contains('assign-select')) {
+        const employeeId = e.target.getAttribute('data-emp-id');
+        const projectId = e.target.value;
+
+        assignProjectToEmployee(employeeId, projectId);
+
+        // Перерисовываем обу таблицы, так как изменились данные и там, и там
+        renderEmployees();
+        renderProjects();
+    }
+});
+
+// Отвязка от проекта через кнопку "x"
+document.getElementById('employees-tbody').addEventListener('click', (e) => {
+    if (e.target.classList.contains('unassign-btn')) {
+        const employeeId = e.target.getAttribute('data-emp-id');
+        const projectId = e.target.getAttribute('data-proj-id');
+
+        unassignProjectFromEmployee(employeeId, projectId);
+
+        renderEmployees();
+        renderProjects();
+    }
 });
 
 // Запускаем приложение
