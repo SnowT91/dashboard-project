@@ -219,7 +219,7 @@ function renderEmployees() {
     tbody.innerHTML = ''; // Очищаем таблицу перед каждой новой отрисовкой
 
     // Генерируем опции для выпадающего списка проектов
-    const projectOptions =data.projects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
+    const projectOptions = data.projects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
 
     data.employees.forEach(emp => {
         // Собираем HTML для уже назначенных проектов (в виде маленьких "тегов" с кнопкой удаления)
@@ -427,6 +427,22 @@ document.getElementById('employees-tbody').addEventListener('click', (e) => {
         renderProjects();
     }
 });
+
+// --- Логика DARK MODE ---
+const btnToggleTheme = document.getElementById('btn-toggle-theme');
+
+btnToggleTheme.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+
+    // Сохраняем выбор в localStorage
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+});
+
+// Проверяем тему при загрузке страницы
+if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+}
 
 // Запускаем приложение
 initApp();

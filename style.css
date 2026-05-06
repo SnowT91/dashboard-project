@@ -110,3 +110,38 @@ input:invalid:not(:placeholder-shown) {
     font-size: 12px;
     padding: 4px;
 }
+
+/* --- DARK MODE --- */
+body.dark-mode #main-content {
+    background: #1e1e1e;
+    color: #f4f4f4;
+}
+
+body.dark-mode .stat-card,
+body.dark-mode form,
+body.dark-mode table {
+    background: #2d2d2d;
+    color: #f4f4f4;
+    border-color: #444;
+}
+
+body.dark-mode th,
+body.dark-mode td {
+    border-color: #444;
+}
+
+body.dark-mode th {
+    background: #333;
+}
+
+body.dark-mode input,
+body.dark-mode select {
+    background: #444;
+    color: white;
+    border: 1px solid #666;
+}
+
+body.dark-mode .assignment-tag {
+    background: #555;
+    color: white;
+}
