@@ -155,6 +155,18 @@ btnTabEmployees.addEventListener('click', () => {
     renderEmployees(); // Обновляем таблицу при переходе
 });
 
+// Функция расчета статистики
+function updateDashboardStats() {
+    const periodKey = getCurrentPeriodKey();
+    const currentData = state.data[periodKey];
+
+    const totalBudget = currentData.projects.reduce((sum, proj) => sum + proj.budget, 0);
+    const totalSalary = currentData.employees.reduce((sum, emp) => sum + emp.salary, 0);
+
+    document.getElementById('stat-total-budget').textContent = `$${totalBudget.toFixed(2)}`;
+    document.getElementById('stat-total-salary').textContent = `$${totalSalary.toFixed(2)}`;
+}
+
 // Отрисовка таблицы сотрудников
 function renderEmployees() {
     const tbody = document.getElementById('employees-tbody');
@@ -177,6 +189,8 @@ function renderEmployees() {
         `;
         tbody.appendChild(tr);
     });
+
+    updateDashboardStats();
 }
 
 // Отрисовка таблицы проектов
@@ -200,6 +214,8 @@ function renderProjects() {
         `;
         tbody.appendChild(tr);
     });
+
+    updateDashboardStats();
 }
 
 // Делегирование событий для удаления сотрудника
@@ -265,7 +281,7 @@ projectForm.addEventListener('input', () => {
 });
 projectForm.addEventListener('blur', () => btnSubmitProject.disabled = !projectForm.checkValidity(), true);
 
-employeeForm.addEventListener('input', () => {
+function validateEmployeeForm() {
     // Для сотрудника нужно дополнительно проверить возраст (18+)
     let isAgeValid = false;
     const dobInput = document.getElementById('emp-dob').value;
@@ -283,7 +299,10 @@ employeeForm.addEventListener('input', () => {
 
     // Кнопка активна, если стандартные проверки HTML пройдены И возраст >= 18
     btnSubmitEmployee.disabled = !(employeeForm.checkValidity() && isAgeValid);
-});
+}
+
+employeeForm.addEventListener('input', validateEmployeeForm);
+employeeForm.addEventListener('blur', validateEmployeeForm, true);
 
 // Отправка формы проектов
 projectForm.addEventListener('submit', (e) => {
