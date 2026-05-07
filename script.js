@@ -161,14 +161,16 @@ function deleteProject(projectId) {
 // Функция, которая запускается при старте приложения
 function initApp() {
     loadData();
+    initMonthSelector();
     console.log("App initialized. Current data:", state.data);
     console.log("Current period:", getCurrentPeriodKey());
 
     // Первичная отрисовка 
     renderProjects();
+    renderEmployees(); // Сразу отрисуем сотрудников скрыто, чтобы статистика посчиталась верно
 }
 
-// --- UI ЛОГИКА (ИНТЕРФЕС И РЕНДЕР)
+// --- UI ЛОГИКА (ИНТЕРФЕЙС И РЕНДЕР) ---
 
 // Находим элементы DOM
 const btnTabProjects = document.getElementById('btn-tab-projects');
@@ -196,6 +198,38 @@ btnTabEmployees.addEventListener('click', () => {
     btnTabProjects.classList.remove('active');
 
     renderEmployees(); // Обновляем таблицу при переходе
+});
+
+// --- ЛОГИКА ВЫБОРА ПЕРИОДА (МЕСЯЦ/ГОД) ---
+const monthSelector = document.getElementById('month-selector');
+
+// Устанавливаем текущий месяц в селектор при загрузке
+function initMonthSelector() {
+    // Формат для input type="month" это "YYYY-MM"
+    // Добавляем +1 к месяцу (т.к. в JS vtczws c 0) и паддинг нулем, если месяц <10
+    const formattedMonth = String(state.currentMonth + 1).padStart(2, '0');
+    monthSelector.value = `${state.currentYear}-${formattedMonth}`;
+}
+
+// Слушаем изменения в селекторе
+monthSelector.addEventListener('change', (e) => {
+    const selectValue = e.target.value; // Строка вида "2026-05"
+    if (!selectedValue) return;
+
+    const [year, month] = selectedValue.split('-');
+
+    // Обновляем глобальное состояние (месяц переводим обратно в формат 0-11)
+    state.currentYear = parseInt(year);
+    state.currentMonth = parseInt(month) - 1;
+
+    // Подгружаем или создаем пустые данные для нового месяца
+    loadData();
+
+    // Перерисовываем UI
+    renderProjects();
+    renderEmployees();
+
+    console.log(`Period switched to: ${getCurrentPeriodKey()}`);
 });
 
 // Функция расчета статистики
