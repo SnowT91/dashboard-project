@@ -10,7 +10,8 @@ const state = {
     sort: {
         employees: { key: null, asc: true },
         projects: { key: null, asc: true }
-    }
+    },
+    employeeToAssign: null // Для хранения ID сотрудника, которого хотим назначить на проект
 };
 
 // Функция для получения ключа текущего месяца (например, в формате "2026-0" для января 2026)
@@ -128,6 +129,22 @@ function deleteProject(projectId) {
     });
 
     saveData();
+}
+
+// Функция назначения сотрудника на проект
+function assignEmployeeToProject(employeeId, projectId) {
+    const periodKey = getCurrentPeriodKey();
+    const data = state.data[periodKey];
+    const employee = data.employees.find(emp => emp.id === employeeId);
+
+    if (employee && projectId) {
+        // Проверяем, не назначен ли уже сотрудник на этот проект
+        const alreadyAssigned = employee.assignments.some(a => a.projectId === projectId);
+        if (!alreadyAssigned) {
+            employee.assignments.push({ projectId: projectId });
+            saveData();
+        }
+    }
 }
 
 // --- СОРТИРОВКА (SORTING) ---
@@ -267,6 +284,12 @@ function renderEmployees() {
             `<option value="${pos}" ${emp.position === pos ? 'selected' : ''}>${pos}</option>`
         ).join('');
 
+        // Получаем названия проектов, к которым прикреплен сотрудник
+        const assignedProjectsNames = emp.assignments.map(a => {
+            const proj = data.projects.find(p => p.id === a.projectId);
+            return proj ? proj.projectName : 'Unknown';
+        }).join(', ') || 'Unassigned';
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${emp.name}</td>
@@ -281,13 +304,11 @@ function renderEmployees() {
                 $<input type="number" class="inline-input update-emp-field" data-id="${emp.id}" data-field="salary" value="${emp.salary.toFixed(2)}" min="0.01" step="0.01" style="margin-left: 2px;">
             </td>
             <td>$0.00</td> <!-- Est Payment -->
-            <td>
-                <button class="btn-show-assignments">Show Assignments (${emp.assignments.length})</button>
-            </td>
+            <td>${assignedProjectsNames}</td>
             <td>$0.00</td> <!-- Projected Income -->
             <td>
                 <button class="btn-availability">Availability</button>
-                <button class="btn-assign">Assign</button>
+                <button class="btn-assign" data-id="${emp.id}">Assign</button>
                 <button class="delete-emp-btn" data-id="${emp.id}">Delete</button>
             </td>
         `;
@@ -302,14 +323,19 @@ function renderProjects() {
     tbody.innerHTML = '';
 
     data.projects.forEach(proj => {
+        // Считаем, сколько сотрудников уже назначено на этот проект
+        const assignedCount = data.employees.filter(emp => 
+            emp.assignments.some(a => a.projectId === proj.id)
+        ).length;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${proj.companyName}</td>
             <td>${proj.projectName}</td>
             <td>$${proj.budget.toFixed(2)}</td>
-            <td>0 / ${proj.employeeCapacity}</td> <!-- Выводим реальные данные -->
+            <td>${assignedCount} / ${proj.employeeCapacity}</td> <!-- Выводим реальные данные -->
             <td>
-                <button class="btn-show-employees">Show Employees (0)</button>
+                <button class="btn-show-employees">Show Employees (${assignedCount})</button>
             </td>
             <td>$0.00</td> <!-- Estimated Income -->
             <td>
@@ -431,6 +457,59 @@ employeeForm.addEventListener('submit', (e) => {
     );
     renderEmployees();
     btnCancelEmployee.click();
+});
+
+// --- ЛОГИКА МОДАЛКИ НАЗНАЧЕНИЙ (ASSIGNMENTS) ---
+const assignModal = document.getElementById('assign-modal');
+const btnCloseAssignModal = document.getElementById('btn-close-assign-modal');
+const btnConfirmAssign = document.getElementById('btn-confirm-assign');
+const assignProjectSelect = document.getElementById('assign-project-select');
+const assignEmpName = document.getElementById('assign-emp-name');
+
+// Открытие модалки (делегирование событий в таблице сотрудников)
+document.getElementById('employees-tbody').addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-assign')) {
+        const empId = e.target.getAttribute('data-id');
+        const periodKey = getCurrentPeriodKey();
+        const data = state.data[periodKey];
+        const employee = data.employees.find(emp => emp.id === empId);
+
+        if (!employee) return;
+
+        state.employeeToAssign = empId;
+        assignEmpName.textContent = `${employee.name} ${employee.surname}`;
+
+        // Заполняем селект проектами, где ещё есть место
+        assignProjectSelect.innerHTML = '<option value="" disabled selected>Select a project...</option>'
+        data.projects.forEach(proj => {
+            const assignedCount = data.employees.filter(e => e.assignments.some(a => a.projectId === proj.id)).length;
+            if (assignedCount < proj.employeeCapacity) {
+                assignProjectSelect.innerHTML += `<option value="${proj.id}">${proj.projectName} (${proj.companyName})</option>`;
+            }
+        });
+
+        assignModal.style.display = 'flex';
+    }
+});
+
+// Закрытие модалки
+btnCloseAssignModal.addEventListener('click', () => {
+    assignModal.style.display = 'none';
+    state.employeeToAssign = null;
+});
+
+// Подтверждение назначения
+btnConfirmAssign.addEventListener('click', () => {
+    const projectId = assignProjectSelect.value;
+    if (state.employeeToAssign && projectId) {
+        assignEmployeeToProject(state.employeeToAssign, projectId);
+        assignModal.style.display = 'none';
+        state.employeeToAssign = null;
+
+        // Переписываем таблицы, чтобы обновить счетчики и имена
+        renderEmployees();
+        renderProjects();
+    }
 });
 
 // --- Логика DARK MODE ---
