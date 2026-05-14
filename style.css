@@ -10,11 +10,32 @@ body {
     min-height: 100vh;
 }
 
+/* Сайдбар */
 #sidebar {
     width: 200px;
     background: #333;
     color:white;
     padding: 20px;
+    transition: width 0.3s; /* Плавное сорачивание */
+}
+
+#sidebar.collapsed {
+    width: 40px;
+    padding: 20px 10px;
+}
+
+#sidebar.collapsed h2,
+#sidebar.collapsed #period-selectors,
+#sidebar.collapsed #sidebar-nav {
+    display: none; /* Скрываем контент, если сайдбар свернут */
+}
+
+#btn-toggle-sidebar {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
 }
 
 #sidebar button {
@@ -36,6 +57,7 @@ body {
     flex-grow: 1;
     padding: 20px;
     background: #f4f4f4;
+    overflow-x: auto;
 }
 
 #stats-dashboard {
@@ -66,6 +88,7 @@ th, td {
 
 th {
     background: #eee;
+    cursor: pointer;
 }
 
 form {
@@ -86,29 +109,33 @@ input:invalid:not(:placeholder-shown) {
     border-color: red;
 }
 
-.assignment-tag {
-    display: inline-block;
-    background: #e0e0e0;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    margin: 2px;
-}
-
-.unassign-btn {
-    background: none;
-    border: none;
-    color: red;
-    font-weight: bold;
-    cursor: pointer;
-    padding: 0 2px;
-    margin-left: 5px;
-}
-
-.assign-select {
-    margin-top: 5px;
-    font-size: 12px;
+/* Стили для Inline Editing */
+.inline-input, .inline-select {
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 14px;
     padding: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.inline-input:focus, .inline-select:focus {
+    border: 1px solid #007bff;
+    background: white;
+    outline: none;
+    cursor: text;
+}
+
+/* Фикс для темной темы инлайнов */
+body.dark-mode .inline-input,
+body.dark-mode .inline-select {
+    color: #f4f4f4;
+}
+
+body.dark-mode .inline-input:focus,
+body.dark-mode .inline-select:focus {
+    background: #444;
 }
 
 /* --- DARK MODE --- */

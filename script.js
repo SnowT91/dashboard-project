@@ -5,7 +5,12 @@ const STORAGE_KEY = 'monthlyData';
 const state = {
     currentMonth: new Date().getMonth(), // 0-11
     currentYear: new Date().getFullYear(), // например, 2026
-    data: {} // Сюда будем загружать данные из localStorage
+    data: {}, // Сюда будем загружать данные из localStorage
+    // Состояние сортировки
+    sort: {
+        employees: { key: null, asc: true },
+        projects: { key: null, asc: true }
+    }
 };
 
 // Функция для получения ключа текущего месяца (например, в формате "2026-0" для января 2026)
@@ -57,12 +62,12 @@ function addEmployee(name, surname, dateOfBirth, position, salary) {
     
     const newEmployee = {
         id: generateId(),
-        name: name,
-        surname: surname,
-        dateOfBirth: dateOfBirth,
-        position: position,
+        name,
+        surname,
+        dateOfBirth,
+        position,
         salary: Number(salary), // Убедимся, что зарплата сохраняется как число
-        assignments: [],         // Список проектов, к которым прикреплен сотрудник
+        assignments: [],        // Список проектов, к которым прикреплен сотрудник
         vacations: []           // Дни отпуска сотрудника в текущем месяце
    };
     
@@ -71,8 +76,6 @@ function addEmployee(name, surname, dateOfBirth, position, salary) {
     
     // Сохраняем изменения
     saveData();
-    console.log(`Employee ${name} ${surname} added successfully.`);
-
     return newEmployee;
 }
 
@@ -81,43 +84,15 @@ function deleteEmployee(employeeId) {
 
     // Оставляем в массиве только тех сотрудников, чей ID НЕ совпадает с удаляемым
     state.data[periodKey].employees = state.data[periodKey].employees.filter(emp => emp.id !== employeeId);
-
     saveData();
-    console.log(`Employee with ID ${employeeId} deleted successfully.`);
 }
 
-// Назначить проект сотруднику
-function assignProjectToEmployee(employeeId, projectId) {
-    const periodKey = getCurrentPeriodKey();
-    const data = state.data[periodKey];
-
-    const employee = data.employees.find(emp => emp.id === employeeId);
-    const project = data.projects.find(proj => proj.id === projectId);
-
-    if (!employee || !project) return;
-
-    // Считаем, сколько сотрудников уже назначено на этот проект
-    const assignedCount = data.employees.filter(emp => emp.assignments.includes(projectId)).length;
-
-    if (assignedCount >= project.employeeCapacity) {
-        alert(`Cannot assign! Project "${project.projectName}" has reached its maximum capacity of${project.employeeCapacity}.`);
-        return;
-    }
-
-    // Добавляем ID проекта сотруднику, если его там ещё нет
-    if (!employee.assignments.includes(projectId)) {
-        employee.assignments.push(projectId);
-        saveData();
-    }
-}
-
-// Отвязать проект от сотрудника
-function unassignProjectFromEmployee(employeeId, projectId) {
+// Обновление данных сотрудника (Inline Editing)
+function updateEmployeeField(employeeId, field, value) {
     const periodKey = getCurrentPeriodKey();
     const employee = state.data[periodKey].employees.find(emp => emp.id === employeeId);
-
     if (employee) {
-        employee.assignments = employee.assignments.filter(id => id !== projectId);
+        employee[field] = field === 'salary' ? Number(value) : value;
         saveData();
     }
 }
@@ -129,16 +104,14 @@ function addProject(projectName, companyName, budget, employeeCapacity) {
 
     const newProject = {
        id: generateId(),
-       projectName: projectName,
-       companyName: companyName,
+       projectName,
+       companyName,
        budget: Number(budget),
        employeeCapacity: Number(employeeCapacity) 
     };
 
     state.data[periodKey].projects.push(newProject);
     saveData();
-    console.log(`Project "${projectName}" added successfully!`);
-
     return newProject;
 }
 
@@ -151,26 +124,57 @@ function deleteProject(projectId) {
 
     // Удаляем ID этого проекта из назначений всех сотрудников
     data.employees.forEach (emp => {
-        emp.assignments = emp.assignments.filter(id => id !== projectId);
+        emp.assignments = emp.assignments.filter(assignments => assignments.projectId !== projectId);
     });
 
     saveData();
-    console.log(`Project with ID ${projectId} deleted successfully.`);
 }
 
-// Функция, которая запускается при старте приложения
+// --- СОРТИРОВКА (SORTING) ---
+function sortData(tableName, key) {
+    const periodKey = getCurrentPeriodKey();
+    const dataArray = state.data[periodKey][tableName];
+
+    // Переключаем направление, если кликнули по той же колонке
+    if (state.sort[tableName].key === key) {
+        state.sort[tableName].asc = !state.sort[tableName].asc;
+    } else {
+        state.sort[tableName].key = key;
+        state.sort[tableName].asc = true;
+    }
+
+    const asc = state.sort[tableName].asc ? 1 : -1;
+
+    dataArray.sort((a, b) => {
+        if (a[key] > b[key]) return 1 * asc;
+        if (a[key] < b[key]) return -1 * asc;
+        return 0;
+    });
+
+    if (tableName === 'employees') renderEmployees();
+    if (tableName === 'projects') renderProjects();
+}
+
+// Обработчик кликов по заголовкам таблиц
+document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+        const key = e.target.getAttribute('data-sort');
+        const tableName = e.target.getAttribute('data-table');
+        if (key && tableName) {
+            sortData(tableName, key);
+        }
+    });
+});
+
+// --- UI ИНИЦИАЛИЗАЦИЯ И НАВИГАЦИЯ ---
 function initApp() {
     loadData();
-    initMonthSelector();
-    console.log("App initialized. Current data:", state.data);
-    console.log("Current period:", getCurrentPeriodKey());
+    initPeriodSelectors();
 
     // Первичная отрисовка 
     renderProjects();
-    renderEmployees(); // Сразу отрисуем сотрудников скрыто, чтобы статистика посчиталась верно
+    renderEmployees();
 }
-
-// --- UI ЛОГИКА (ИНТЕРФЕЙС И РЕНДЕР) ---
 
 // Находим элементы DOM
 const btnTabProjects = document.getElementById('btn-tab-projects');
@@ -200,143 +204,156 @@ btnTabEmployees.addEventListener('click', () => {
     renderEmployees(); // Обновляем таблицу при переходе
 });
 
-// --- ЛОГИКА ВЫБОРА ПЕРИОДА (МЕСЯЦ/ГОД) ---
-const monthSelector = document.getElementById('month-selector');
+// --- САЙДБАР ---
+const sidebar = document.getElementById('sidebar');
+const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
 
-// Устанавливаем текущий месяц в селектор при загрузке
-function initMonthSelector() {
-    // Формат для input type="month" это "YYYY-MM"
-    // Добавляем +1 к месяцу (т.к. в JS vtczws c 0) и паддинг нулем, если месяц <10
-    const formattedMonth = String(state.currentMonth + 1).padStart(2, '0');
-    monthSelector.value = `${state.currentYear}-${formattedMonth}`;
+btnToggleSidebar.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    btnToggleSidebar.textContent = sidebar.classList.contains('collapsed') ? '→' : '☰';
+});
+
+// --- ВЫБОР ПЕРИОДА (МЕСЯЦ/ГОД) ---
+const monthSelector = document.getElementById('month-selector');
+const yearSelector = document.getElementById('year-selector');
+
+function initPeriodSelectors() {
+    monthSelector.value = state.currentMonth;
+    // Если текущего года нет в селекторе (например, сейчас 2024), поставим дефолт 2026
+    const hasYear = Array.from(yearSelector.options).some(opt => opt.value == state.currentYear);
+    if (!hasYear) state.currentYear = 2026;
+    yearSelector.value = state.currentYear;
 }
 
-// Слушаем изменения в селекторе
-monthSelector.addEventListener('change', (e) => {
-    const selectValue = e.target.value; // Строка вида "2026-05"
-    if (!selectedValue) return;
-
-    const [year, month] = selectedValue.split('-');
-
-    // Обновляем глобальное состояние (месяц переводим обратно в формат 0-11)
-    state.currentYear = parseInt(year);
-    state.currentMonth = parseInt(month) - 1;
-
+function handlePeriodChange() {
+    state.currentMonth = parseInt(monthSelector.value);
+    state.currentYear = parseInt(yearSelector.value);
     // Подгружаем или создаем пустые данные для нового месяца
     loadData();
-
     // Перерисовываем UI
     renderProjects();
     renderEmployees();
+}
 
-    console.log(`Period switched to: ${getCurrentPeriodKey()}`);
-});
+monthSelector.addEventListener('change', handlePeriodChange);
+yearSelector.addEventListener('change', handlePeriodChange);
 
-// Функция расчета статистики
-function updateDashboardStats() {
-    const periodKey = getCurrentPeriodKey();
-    const currentData = state.data[periodKey];
-
-    const totalBudget = currentData.projects.reduce((sum, proj) => sum + proj.budget, 0);
-    const totalSalary = currentData.employees.reduce((sum, emp) => sum + emp.salary, 0);
-
-    document.getElementById('stat-total-budget').textContent = `$${totalBudget.toFixed(2)}`;
-    document.getElementById('stat-total-salary').textContent = `$${totalSalary.toFixed(2)}`;
+// --- РЕНДЕР ТАБЛИЦ ---
+// Для сотрудника нужно дополнительно проверить возраст (18+)
+function calculateAge(dobString) {
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+    return age;  
 }
 
 // Отрисовка таблицы сотрудников
 function renderEmployees() {
     const tbody = document.getElementById('employees-tbody');
-    const periodKey = getCurrentPeriodKey();
-    const data = state.data[periodKey];
-
+    const data = state.data[getCurrentPeriodKey()];
     tbody.innerHTML = ''; // Очищаем таблицу перед каждой новой отрисовкой
 
-    // Генерируем опции для выпадающего списка проектов
-    const projectOptions = data.projects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
+    const positions = ['Junior', 'Middle', 'Senior', 'Lead', 'Architect', 'BO'];
 
     data.employees.forEach(emp => {
-        // Собираем HTML для уже назначенных проектов (в виде маленьких "тегов" с кнопкой удаления)
-        const assignmentsHtml = emp.assignments.map(projectId => {
-            const project = data.projects.find(p => p.id === projectId);
-            if (!project) return ''; // Если проект был удален, пропускаем
-            return `<div class="assignment-tag">
-                        ${project.projectName} 
-                        <button class="unassign-btn" data-emp-id="${emp.id}" data-proj-id="${project.id}">x</button>
-                    </div>`;
-        }).join('');
-        
+        const age = calculateAge(emp.dateOfBirth);
+
+        // Генерируем опции для селекта позиции
+        const positionOptions = positions.map(pos => 
+            `<option value="${pos}" ${emp.position === pos ? 'selected' : ''}>${pos}</option>`
+        ).join('');
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${emp.name}</td>
             <td>${emp.surname}</td>
-            <td>${emp.position}</td>
-            <td>$${emp.salary.toFixed(2)}</td>
+            <td>${age}</td>
             <td>
-                <div class="assignments-list">${assignmentsHtml}</div>
-                <select class="assign-select" data-emp-id="${emp.id}">
-                    <option value="" disabled selected>+ Assign to...</option>
-                    ${projectOptions}
+                <select class="inline-select update-emp-field" data-id="${emp.id}" data-field="position">
+                    ${positionOptions}
                 </select>
             </td>
+            <td style="display: flex; align-items: center;">
+                $<input type="number" class="inline-input update-emp-field" data-id="${emp.id}" data-field="salary" value="${emp.salary.toFixed(2)}" min="0.01" step="0.01" style="margin-left: 2px;">
+            </td>
+            <td>$0.00</td> <!-- Est Payment -->
             <td>
-                <!-- Кнопка удаления. Мы вешаем на нее data-атрибут с ID -->
+                <button class="btn-show-assignments">Show Assignments (${emp.assignments.length})</button>
+            </td>
+            <td>$0.00</td> <!-- Projected Income -->
+            <td>
+                <button class="btn-availability">Availability</button>
+                <button class="btn-assign">Assign</button>
                 <button class="delete-emp-btn" data-id="${emp.id}">Delete</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
-
-    updateDashboardStats();
 }
 
 // Отрисовка таблицы проектов
 function renderProjects() {
     const tbody = document.getElementById('projects-tbody');
-    const periodKey = getCurrentPeriodKey();
-    const data = state.data[periodKey];
-
+    const data = state.data[getCurrentPeriodKey()];
     tbody.innerHTML = '';
 
     data.projects.forEach(proj => {
-        //Считаем количество сотрудников, у которых в массиве assignments есть ID этого проекта
-        const assignedCount = data.employees.filter(emp => emp.assignments.includes(proj.id)).length;
-        
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${proj.companyName}</td>
             <td>${proj.projectName}</td>
             <td>$${proj.budget.toFixed(2)}</td>
-            <td>${assignedCount} / ${proj.employeeCapacity}</td> <!-- Выводим реальные данные -->
+            <td>0 / ${proj.employeeCapacity}</td> <!-- Выводим реальные данные -->
+            <td>
+                <button class="btn-show-employees">Show Employees (0)</button>
+            </td>
+            <td>$0.00</td> <!-- Estimated Income -->
             <td>
                 <button class="delete-proj-btn" data-id="${proj.id}">Delete</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
-
-    updateDashboardStats();
 }
 
 // Делегирование событий для удаления сотрудника
 document.getElementById('employees-tbody').addEventListener('click', (e) => {
     if (e.target.classList.contains('delete-emp-btn')) {
         // Достаем ID из data-id атрибута
+        deleteEmployee(e.target.getAttribute('data-id'));   // Удаляем из state
+        renderEmployees();                                  // Перерисовываем UI
+    }
+});
+
+// Слушатель для Inline Editing (событие 'change' срабатывает, когда инпут теряет фокус после изменения)
+document.getElementById('employees-tbody').addEventListener('change', (e) => {
+    if (e.target.classList.contains('update-emp-field')) {
         const employeeId = e.target.getAttribute('data-id');
-        deleteEmployee(employeeId); // Удаляем из state
-        renderEmployees();           // Перерисовываем UI
+        const field = e.target.getAttribute('data-field');
+        const value = e.target.value;
+
+        if (e.target.checkValidity()) { 
+            updateEmployeeField(employeeId, field, value);
+            renderEmployees(); // Перерисовываем для форматирования
+        } else {
+            alert('Invalid input');
+            renderEmployees(); // Возвращаем старое значение
+        }
     }
 });
 
 // Делегирование событий для удаления проекта
 document.getElementById('projects-tbody').addEventListener('click', (e) => {
     if (e.target.classList.contains('delete-proj-btn')) {
-        const projectId = e.target.getAttribute('data-id');
-        deleteProject(projectId);
+        deleteProject(e.target.getAttribute('data-id'));
         renderProjects();
     }
 });
-
+        
 // --- ЛОГИКА ФОРМ И ВАЛИДАЦИИ ---
 
 // Элементы формы проектов
@@ -345,23 +362,39 @@ const btnShowProjectForm = document.getElementById('btn-show-project-form');
 const btnCancelProject = document.getElementById('btn-cancel-project');
 const btnSubmitProject = document.getElementById('btn-submit-project');
 
-// Элементы формы сотрудников
-const employeeForm = document.getElementById('employee-form');
-const btnShowEmployeeForm = document.getElementById('btn-show-employee-form');
-const btnCancelEmployee = document.getElementById('btn-cancel-employee');
-const btnSubmitEmployee = document.getElementById('btn-submit-employee');
-
 // Функции показать/скрыть формы
 btnShowProjectForm.addEventListener('click', () => {
     projectForm.style.display = 'block';
     btnShowProjectForm.style.display = 'none';
 });
+
 btnCancelProject.addEventListener('click', () => {
     projectForm.style.display = 'none';
     btnShowProjectForm.style.display = 'inline-block';
     projectForm.reset();
     btnSubmitProject.disabled = true; // Сбрасываем кнопку
 });
+
+// Real-time валидация: проверяем форму при каждом входе
+projectForm.addEventListener('input', () => btnSubmitProject.disabled = !projectForm.checkValidity());
+// Отправка формы проектов
+projectForm.addEventListener('submit', (e) => {
+    e.preventDefault(); // Отменяем перезагрузку страницы
+    addProject(
+        document.getElementById('proj-name').value,
+        document.getElementById('proj-company').value,
+        document.getElementById('proj-budget').value,
+        document.getElementById('proj-capacity').value
+    );
+    renderProjects();
+    btnCancelProject.click(); // Имитируем клик по Cancel, чтобы скрыть форму и очистить её  
+});
+
+// Элементы формы сотрудников
+const employeeForm = document.getElementById('employee-form');
+const btnShowEmployeeForm = document.getElementById('btn-show-employee-form');
+const btnCancelEmployee = document.getElementById('btn-cancel-employee');
+const btnSubmitEmployee = document.getElementById('btn-submit-employee');
 
 btnShowEmployeeForm.addEventListener('click', () => {
     employeeForm.style.display = 'block';
@@ -374,92 +407,30 @@ btnCancelEmployee.addEventListener('click', () => {
     btnSubmitEmployee.disabled = true;
 });
 
-// Real-time валидация: проверяем форму при каждом входе
-projectForm.addEventListener('input', () => {
-    // checkValidity() - встроенный метод JS, который проверяет все правила (required, minlength и т.д.)
-    btnSubmitProject.disabled = !projectForm.checkValidity();
-});
-projectForm.addEventListener('blur', () => btnSubmitProject.disabled = !projectForm.checkValidity(), true);
-
 function validateEmployeeForm() {
     // Для сотрудника нужно дополнительно проверить возраст (18+)
     let isAgeValid = false;
     const dobInput = document.getElementById('emp-dob').value;
 
     if (dobInput) {
-        const birthDate = new Date(dobInput);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-        }
-        isAgeValid = age >= 18;
+        isAgeValid = calculateAge(dobInput) >= 18;
     }
-
-    // Кнопка активна, если стандартные проверки HTML пройдены И возраст >= 18
     btnSubmitEmployee.disabled = !(employeeForm.checkValidity() && isAgeValid);
 }
-
-employeeForm.addEventListener('input', validateEmployeeForm);
-employeeForm.addEventListener('blur', validateEmployeeForm, true);
-
-// Отправка формы проектов
-projectForm.addEventListener('submit', (e) => {
-    e.preventDefault(); // Отменяем перезагрузку страницы
-
-    const name = document.getElementById('proj-name').value;
-    const company = document.getElementById('proj-company').value;
-    const budget = document.getElementById('proj-budget').value;
-    const capacity = document.getElementById('proj-capacity').value;
-
-    addProject(name, company, budget, capacity);
-    renderProjects();
-
-    btnCancelProject.click(); // Имитируем клик по Cancel, чтобы скрыть форму и очистить её  
-});
-
+employeeForm.addEventListener('input', validateEmployeeForm);       
+        
 // Отправка формы сотрудников
 employeeForm.addEventListener('submit', (e) => {
     e.preventDefault();
-
-    const name = document.getElementById('emp-name').value;
-    const surname = document.getElementById('emp-surname').value;
-    const dob = document.getElementById('emp-dob').value;
-    const position = document.getElementById('emp-position').value;
-    const salary = document.getElementById('emp-salary').value;
-
-    addEmployee(name, surname, dob, position, salary);
+    addEmployee(
+        document.getElementById('emp-name').value,
+        document.getElementById('emp-surname').value,
+        document.getElementById('emp-dob').value,
+        document.getElementById('emp-position').value,
+        document.getElementById('emp-salary').value
+    );
     renderEmployees();
-
     btnCancelEmployee.click();
-});
-
-// Назначение на проект через выпадающий список
-document.getElementById('employees-tbody').addEventListener('change', (e) => {
-    if (e.target.classList.contains('assign-select')) {
-        const employeeId = e.target.getAttribute('data-emp-id');
-        const projectId = e.target.value;
-
-        assignProjectToEmployee(employeeId, projectId);
-
-        // Перерисовываем обу таблицы, так как изменились данные и там, и там
-        renderEmployees();
-        renderProjects();
-    }
-});
-
-// Отвязка от проекта через кнопку "x"
-document.getElementById('employees-tbody').addEventListener('click', (e) => {
-    if (e.target.classList.contains('unassign-btn')) {
-        const employeeId = e.target.getAttribute('data-emp-id');
-        const projectId = e.target.getAttribute('data-proj-id');
-
-        unassignProjectFromEmployee(employeeId, projectId);
-
-        renderEmployees();
-        renderProjects();
-    }
 });
 
 // --- Логика DARK MODE ---
