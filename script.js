@@ -290,6 +290,16 @@ function renderEmployees() {
             return proj ? proj.projectName : 'Unknown';
         }).join(', ') || 'Unassigned';
 
+        // Для базового MVP
+        const estPayment = emp.salary;
+        
+        // Projected Income сотрудника (сколько бюджета он "осваивает")
+        // Если он на 2 проектах с бюджетами 1000 и 2000, суммируем их
+        const projectedIncome = emp.assignments.reduce((sum, a) => {
+            const proj = data.projects.find(p => p.id === a.projectId);
+            return sum + (proj ? +proj.budget : 0);
+        }, 0);
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${emp.name}</td>
@@ -303,9 +313,9 @@ function renderEmployees() {
             <td style="display: flex; align-items: center;">
                 $<input type="number" class="inline-input update-emp-field" data-id="${emp.id}" data-field="salary" value="${emp.salary.toFixed(2)}" min="0.01" step="0.01" style="margin-left: 2px;">
             </td>
-            <td>$0.00</td> <!-- Est Payment -->
+            <td>$${estPayment.toFixed(2)}</td> <!-- Ожили данныеEst Payment -->
             <td>${assignedProjectsNames}</td>
-            <td>$0.00</td> <!-- Projected Income -->
+            <td>$${projectedIncome.toFixed(2)}</td> <!-- Ожили данныеProjected Income -->
             <td>
                 <button class="btn-availability">Availability</button>
                 <button class="btn-assign" data-id="${emp.id}">Assign</button>
@@ -319,14 +329,26 @@ function renderEmployees() {
 // Отрисовка таблицы проектов
 function renderProjects() {
     const tbody = document.getElementById('projects-tbody');
+    const totalIncomeEl = document.getElementById('total-estimated-income');
     const data = state.data[getCurrentPeriodKey()];
     tbody.innerHTML = '';
 
+    let totalDashboardIncome = 0; // Для подсчета общей суммы
+
     data.projects.forEach(proj => {
-        // Считаем, сколько сотрудников уже назначено на этот проект
-        const assignedCount = data.employees.filter(emp => 
+        // Находим всех сотрудников, привязанных к этому проекту
+        const assignedEmployees = data.employees.filter(emp => 
             emp.assignments.some(a => a.projectId === proj.id)
-        ).length;
+        );
+
+        const assignedCount = assignedEmployees.length;
+
+        // Считаем сумму из зарплат
+        const totalSalaries = assignedEmployees.reduce((sum, emp) => sum + emp.salary, 0);
+
+        // Доход проекта = Бюджет - Затраты на сотрудников
+        const estimatedIncome = proj.budget - totalSalaries;
+        totalDashboardIncome += estimatedIncome;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -337,13 +359,19 @@ function renderProjects() {
             <td>
                 <button class="btn-show-employees">Show Employees (${assignedCount})</button>
             </td>
-            <td>$0.00</td> <!-- Estimated Income -->
+            <td style="color: ${estimatedIncome >= 0 ? 'green' : 'red'}; font-weight: bold;">
+                $${estimatedIncome.toFixed(2)}
+            </td>
             <td>
                 <button class="delete-proj-btn" data-id="${proj.id}">Delete</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+
+    // Обновляем общую сумму под таблицей проектов
+    totalIncomeEl.textContent = `Total Estimated Income: $${totalDashboardIncome.toFixed(2)}`;
+    totalIncomeEl.style.color = totalDashboardIncome >= 0 ? 'green' : 'red';
 }
 
 // Делегирование событий для удаления сотрудника
